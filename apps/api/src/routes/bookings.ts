@@ -300,7 +300,7 @@ async function firstFullDay(from: string, to: string) {
 }
 
 // GET /bookings/mine   (Authorization: Bearer <token from the web app's /api/rt-token>)
-// → { bookings: [{ bookingId, serviceType, pickup, destination, dateTime, endsAt, ... }] }
+// → { bookings: [{ bookingId, serviceType, pickup, destination, dateTime, endsAt, description, helperName, ... }] }
 // The signed-in customer's own bookings for their dashboard, latest start first.
 // Amounts are minor units (paise for INR).
 const MY_BOOKINGS_LIMIT = 100;
@@ -328,11 +328,15 @@ bookingRoutes.get("/mine", async (c) => {
       paymentStatus: bookings.paymentStatus,
       jobStatus: bookings.jobStatus,
       helperAssigned: sql<boolean>`${bookings.helperId} is not null`,
+      // Who the booking is for (name, phone) is in here until it has its own fields
+      description: bookings.description,
+      helperName: users.name,
       denialReason: bookings.denialReason,
       createdAt: bookings.createdAt,
     })
     .from(bookings)
     .innerJoin(services, eq(services.serviceId, bookings.serviceId))
+    .leftJoin(users, eq(users.id, bookings.helperId))
     .where(eq(bookings.userId, userId))
     .orderBy(desc(bookings.dateTime))
     .limit(MY_BOOKINGS_LIMIT);
